@@ -1,0 +1,590 @@
+ <!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Pictogramas Interativo</title>
+    <!-- Incluindo o Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Biblioteca para gerar a imagem para download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Biblioteca para reordenar (drag-and-drop) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        /* Estilo para a fonte Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        main {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Animações e estilos customizados */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Efeito de fade-in para modais */
+        .modal-fade {
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .modal-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .pictogram-card {
+            cursor: grab;
+        }
+        /* Estilo para o item sendo arrastado */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: #c8ebfb;
+        }
+        /* Estilo para o cursor durante o arrasto */
+        .sortable-dragging {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <main>
+        <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8 w-full max-w-5xl">
+            
+            <!-- Cabeçalho -->
+            <div class="text-center mb-6">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Gerador de Pictogramas</h1>
+                <p class="text-gray-500 mt-2">Digite uma frase para gerar, depois customize e reordene como quiser.</p>
+            </div>
+
+            <!-- Área de Input -->
+            <div class="flex flex-col sm:flex-row gap-3 mb-6">
+                <input type="text" id="text-input" class="flex-grow w-full px-4 py-3 text-lg text-gray-700 bg-gray-50 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" placeholder="Digite uma ou mais palavras...">
+                <button id="generate-btn" class="w-full sm:w-auto bg-blue-600 text-white font-bold px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-transform transform hover:scale-105 shadow-md flex items-center justify-center">
+                    <span id="btn-text">Gerar</span>
+                    <svg id="btn-spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Painel de Customização -->
+            <div id="customization-panel" class="hidden bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6 flex flex-col gap-4">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
+                     <h3 class="text-lg font-bold text-gray-700">Customizar Prancha</h3>
+                     <div class="flex flex-wrap items-center justify-center gap-4">
+                        <!-- Cor da Borda -->
+                        <div class="flex items-center gap-2">
+                             <label for="border-color-input" class="text-sm font-medium text-gray-600">Cor da Borda:</label>
+                             <input type="color" id="border-color-input" value="#e5e7eb" class="w-8 h-8 rounded border-gray-300 cursor-pointer">
+                        </div>
+                        <!-- Toggle Legendas -->
+                        <button id="toggle-text-btn" class="bg-indigo-500 text-white font-bold px-4 py-2 rounded-lg text-sm hover:bg-indigo-600">Ocultar Legendas</button>
+                        <!-- Slider de Colunas -->
+                        <div class="flex items-center gap-2">
+                             <label for="column-slider" class="text-sm font-medium text-gray-600">Colunas:</label>
+                             <input type="range" id="column-slider" min="2" max="8" value="6" class="w-24 cursor-pointer">
+                             <span id="column-count" class="text-sm font-bold text-gray-800">6</span>
+                        </div>
+                     </div>
+                </div>
+                <div class="w-full border-t border-gray-200 pt-4">
+                    <label for="board-title-input" class="block text-sm font-medium text-gray-600 mb-1">Título da Prancha (opcional):</label>
+                    <input type="text" id="board-title-input" class="w-full px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Ex: Minha Rotina da Manhã">
+                </div>
+            </div>
+
+            <!-- Área de Resultados -->
+            <div id="result-container" class="bg-gray-50 rounded-lg p-4 min-h-[200px] border border-dashed border-gray-300 flex items-center justify-center">
+                <p id="placeholder-text" class="text-gray-400 text-center">Os pictogramas aparecerão aqui.</p>
+                <div id="loader" class="loader hidden"></div>
+                <div id="pictogram-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 w-full">
+                    <!-- Pictogramas serão inseridos aqui -->
+                </div>
+            </div>
+
+            <!-- Botão de Download -->
+            <div class="text-center mt-6">
+                <button id="download-btn" class="hidden w-full sm:w-auto bg-green-600 text-white font-bold px-6 py-3 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-transform transform hover:scale-105 shadow-md">
+                    Baixar Prancha
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center text-gray-500 text-sm mt-6 pb-4">
+        Feito com amor por Eduardo Costa e Nicole Alves ❤️
+    </footer>
+
+
+    <!-- Modal de Busca de Pictograma -->
+    <div id="search-modal" class="modal-fade modal-hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Alterar Pictograma</h2>
+                <button id="modal-close-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                <input type="text" id="modal-search-input" class="flex-grow px-4 py-2 text-gray-700 bg-gray-100 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Buscar por outra palavra...">
+                <button id="modal-search-btn" class="bg-blue-600 text-white font-bold px-5 py-2 rounded-lg hover:bg-blue-700">Buscar</button>
+                <button id="modal-upload-btn" class="bg-purple-600 text-white font-bold px-5 py-2 rounded-lg hover:bg-purple-700">Enviar Imagem</button>
+                <input type="file" id="modal-file-input" class="hidden" accept="image/*">
+            </div>
+            <div id="modal-results-container" class="flex-grow overflow-y-auto bg-gray-50 p-3 rounded-lg border border-dashed">
+                 <div id="modal-loader" class="loader mx-auto hidden"></div>
+                 <p id="modal-placeholder" class="text-center text-gray-500 hidden col-span-full">Nenhum resultado encontrado. Tente outra busca ou envie sua imagem.</p>
+                 <div id="modal-results-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                     <!-- Resultados da busca do modal aqui -->
+                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Alerta Customizado -->
+    <div id="alert-modal" class="modal-fade modal-hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+            <p id="alert-message" class="text-gray-700 mb-4">Mensagem de alerta.</p>
+            <button id="alert-close-btn" class="bg-blue-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-blue-700">OK</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- REFERÊNCIAS AOS ELEMENTOS DO DOM ---
+        const textInput = document.getElementById('text-input');
+        const generateBtn = document.getElementById('generate-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const pictogramGrid = document.getElementById('pictogram-grid');
+        const placeholderText = document.getElementById('placeholder-text');
+        const loader = document.getElementById('loader');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
+        
+        // Modal de Busca
+        const searchModal = document.getElementById('search-modal');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const modalSearchInput = document.getElementById('modal-search-input');
+        const modalSearchBtn = document.getElementById('modal-search-btn');
+        const modalResultsGrid = document.getElementById('modal-results-grid');
+        const modalLoader = document.getElementById('modal-loader');
+        const modalPlaceholder = document.getElementById('modal-placeholder');
+        const modalUploadBtn = document.getElementById('modal-upload-btn');
+        const modalFileInput = document.getElementById('modal-file-input');
+        
+        // Modal de Alerta
+        const alertModal = document.getElementById('alert-modal');
+        const alertMessage = document.getElementById('alert-message');
+        const alertCloseBtn = document.getElementById('alert-close-btn');
+
+        // Painel de Customização
+        const customizationPanel = document.getElementById('customization-panel');
+        const borderColorInput = document.getElementById('border-color-input');
+        const toggleTextBtn = document.getElementById('toggle-text-btn');
+        const columnSlider = document.getElementById('column-slider');
+        const columnCount = document.getElementById('column-count');
+        const boardTitleInput = document.getElementById('board-title-input');
+
+        let currentEditingCard = null;
+        let sortableInstance = null;
+        let isDragging = false; // Flag para controlar o estado de arrasto
+        const PICTO_SIZE = 96; // Tamanho em pixels (w-24 h-24)
+
+        // --- INICIALIZAÇÃO E EVENT LISTENERS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            generateBtn.addEventListener('click', generatePictograms);
+            textInput.addEventListener('keyup', (e) => e.key === 'Enter' && generatePictograms());
+            downloadBtn.addEventListener('click', downloadBoard);
+            
+            // Listeners do Modal de Busca
+            modalCloseBtn.addEventListener('click', () => searchModal.classList.replace('modal-visible', 'modal-hidden'));
+            modalSearchBtn.addEventListener('click', searchInModal);
+            modalSearchInput.addEventListener('keyup', (e) => e.key === 'Enter' && searchInModal());
+            modalUploadBtn.addEventListener('click', () => modalFileInput.click());
+            modalFileInput.addEventListener('change', handleImageUpload);
+            
+            // Listener do Modal de Alerta
+            alertCloseBtn.addEventListener('click', () => alertModal.classList.replace('modal-hidden', 'modal-visible'));
+
+            // Listeners de Customização
+            borderColorInput.addEventListener('input', () => applyBorderColorToAll(borderColorInput.value));
+            toggleTextBtn.addEventListener('click', togglePictogramText);
+            columnSlider.addEventListener('input', updateGridColumns);
+        });
+
+        // --- FUNÇÕES DE UI (MODAIS, ESTADOS, CUSTOMIZAÇÃO) ---
+
+        function showAlert(message) {
+            alertMessage.textContent = message;
+            alertModal.classList.replace('modal-hidden', 'modal-visible');
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                btnText.classList.add('hidden');
+                btnSpinner.classList.remove('hidden');
+                generateBtn.disabled = true;
+                generateBtn.classList.add('cursor-not-allowed');
+                placeholderText.classList.add('hidden');
+                pictogramGrid.innerHTML = '';
+                loader.classList.remove('hidden');
+            } else {
+                btnText.classList.remove('hidden');
+                btnSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('cursor-not-allowed');
+                loader.classList.add('hidden');
+            }
+        }
+        
+        function applyBorderColorToAll(color) {
+            const cards = pictogramGrid.querySelectorAll('.pictogram-card');
+            cards.forEach(card => card.style.borderColor = color);
+        }
+        
+        function togglePictogramText() {
+            pictogramGrid.classList.toggle('hide-text');
+            const isHidden = pictogramGrid.classList.contains('hide-text');
+            toggleTextBtn.textContent = isHidden ? 'Mostrar Legendas' : 'Ocultar Legendas';
+            toggleTextBtn.classList.toggle('bg-indigo-500', !isHidden);
+            toggleTextBtn.classList.toggle('bg-red-500', isHidden);
+            
+            const legends = pictogramGrid.querySelectorAll('.pictogram-legend');
+            legends.forEach(legend => legend.classList.toggle('hidden'));
+        }
+        
+        function updateGridColumns() {
+            const count = columnSlider.value;
+            columnCount.textContent = count;
+            // Remove todas as classes de coluna existentes e adiciona a nova
+            pictogramGrid.className = pictogramGrid.className.replace(/grid-cols-\d+/g, '');
+            pictogramGrid.classList.add(`grid-cols-${count}`);
+        }
+        
+        function initSortable() {
+            if (sortableInstance) {
+                sortableInstance.destroy();
+            }
+            sortableInstance = new Sortable(pictogramGrid, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                delay: 100, // Atraso maior para evitar arrastos acidentais
+	            delayOnTouchOnly: true,
+                onStart: () => {
+                   isDragging = true;
+                },
+                onEnd: () => {
+                   // Reseta a flag após um pequeno timeout para garantir que o evento de clique seja ignorado.
+                   setTimeout(() => {
+                       isDragging = false;
+                   }, 50);
+                }
+            });
+        }
+
+        // --- FUNÇÕES PRINCIPAIS ---
+
+        async function generatePictograms() {
+            const text = textInput.value.trim();
+            if (!text) {
+                showAlert('Por favor, digite um texto.');
+                return;
+            }
+
+            const originalWords = text.split(/\s+/);
+            const normalizedWords = originalWords.map(word => word.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase());
+
+            setLoading(true);
+            downloadBtn.classList.add('hidden');
+            customizationPanel.classList.add('hidden');
+
+            try {
+                const pictogramData = await Promise.all(normalizedWords.map(word => fetchPictogramForWord(word, true)));
+                displayPictograms(pictogramData, originalWords);
+                if (pictogramGrid.hasChildNodes()) {
+                    downloadBtn.classList.remove('hidden');
+                    customizationPanel.classList.remove('hidden');
+                    initSortable();
+                }
+            } catch (error) {
+                console.error('Erro ao buscar pictogramas:', error);
+                placeholderText.textContent = 'Ocorreu um erro. Tente novamente.';
+                placeholderText.classList.remove('hidden');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function fetchPictogramForWord(word, findJustOne = true) {
+            const searchWord = word.toLowerCase();
+            const apiUrl = `https://api.arasaac.org/api/pictograms/pt/search/${encodeURIComponent(searchWord)}`;
+            
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    console.warn(`API retornou status ${response.status} para a palavra "${word}"`);
+                    return findJustOne ? null : [];
+                }
+                const results = await response.json();
+                return findJustOne ? (results.length > 0 ? results[0] : null) : results;
+            } catch (error) {
+                console.error(`Erro no fetch para a palavra "${word}":`, error);
+                return findJustOne ? null : [];
+            }
+        }
+
+        function displayPictograms(pictogramData, originalWords) {
+            pictogramGrid.innerHTML = '';
+            placeholderText.classList.add('hidden');
+
+            if (pictogramData.every(p => p === null)) {
+                placeholderText.textContent = 'Nenhum pictograma encontrado para o texto informado.';
+                placeholderText.classList.remove('hidden');
+                return;
+            }
+
+            pictogramData.forEach((picto, index) => {
+                const originalWord = originalWords[index];
+                const card = createPictogramCard(originalWord, picto);
+                pictogramGrid.appendChild(card);
+            });
+        }
+
+        function createPictogramCard(word, pictoData) {
+            const card = document.createElement('div');
+            card.className = 'pictogram-card flex flex-col items-center justify-start p-2 bg-white border-2 border-gray-200 rounded-lg text-center shadow-sm transition-transform transform hover:scale-105';
+            card.dataset.word = word;
+            card.style.borderColor = borderColorInput.value;
+
+            const imageContainer = document.createElement('div');
+            imageContainer.className = `w-24 h-24 flex items-center justify-center mb-2`;
+            
+            if (pictoData && pictoData._id) {
+                const imageUrl = `https://api.arasaac.org/api/pictograms/${pictoData._id}`;
+                const image = new Image();
+                image.src = imageUrl;
+                image.alt = word;
+                image.className = 'w-full h-full object-contain pointer-events-none';
+                image.crossOrigin = 'anonymous'; 
+                imageContainer.appendChild(image);
+            } else {
+                imageContainer.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg pointer-events-none"><span class="text-gray-400 text-sm">Não<br>encontrado</span></div>`;
+            }
+            card.appendChild(imageContainer);
+
+            const wordText = document.createElement('p');
+            wordText.textContent = word;
+            wordText.className = 'pictogram-legend text-sm font-medium text-gray-700 break-words w-full pointer-events-none';
+            card.appendChild(wordText);
+
+            // Adiciona um único listener de clique que gerencia todas as ações
+            card.addEventListener('click', (e) => {
+                // Ignora o clique se uma operação de arrastar acabou de acontecer
+                if (isDragging) {
+                    return;
+                }
+
+                // Ação de colorir a borda com Ctrl/Cmd + Clique
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    card.style.borderColor = borderColorInput.value;
+                    return; // Finaliza para não abrir o modal
+                }
+                
+                // Ação padrão: abrir o modal para edição
+                openSearchModal(card);
+            });
+            
+            return card;
+        }
+
+        // --- FUNÇÕES DO MODAL DE ALTERAÇÃO ---
+
+        function openSearchModal(cardElement) {
+            currentEditingCard = cardElement;
+            const word = cardElement.dataset.word;
+            modalSearchInput.value = word;
+            searchModal.classList.replace('modal-hidden', 'modal-visible');
+            searchInModal();
+        }
+
+        async function searchInModal() {
+            const searchTerm = modalSearchInput.value.trim();
+            if (!searchTerm) return;
+
+            modalResultsGrid.innerHTML = '';
+            modalPlaceholder.classList.add('hidden');
+            modalLoader.classList.remove('hidden');
+
+            const results = await fetchPictogramForWord(searchTerm, false);
+            
+            modalLoader.classList.add('hidden');
+            if (results.length === 0) {
+                modalPlaceholder.classList.remove('hidden');
+                return;
+            }
+
+            results.forEach(picto => {
+                const imageUrl = `https://api.arasaac.org/api/pictograms/${picto._id}`;
+                const imgWrapper = document.createElement('div');
+                imgWrapper.className = 'p-1 bg-white rounded border hover:border-blue-500 hover:shadow-md cursor-pointer';
+                const image = new Image();
+                image.src = imageUrl;
+                image.className = 'w-full h-full object-contain';
+                imgWrapper.appendChild(image);
+                imgWrapper.addEventListener('click', () => updatePictogram(imageUrl));
+                modalResultsGrid.appendChild(imgWrapper);
+            });
+        }
+
+        function updatePictogram(newImageUrl) {
+            const imageContainer = currentEditingCard.querySelector('.w-24.h-24');
+            imageContainer.innerHTML = ''; // Limpa o conteúdo antigo
+
+            const newImage = new Image();
+            newImage.src = newImageUrl;
+            newImage.alt = currentEditingCard.dataset.word;
+            newImage.className = 'w-full h-full object-contain pointer-events-none';
+            
+            if (!newImageUrl.startsWith('data:image')) {
+                newImage.crossOrigin = 'anonymous';
+            }
+            
+            imageContainer.appendChild(newImage);
+            searchModal.classList.replace('modal-visible', 'modal-hidden');
+        }
+
+        // --- FUNCIONALIDADE DE UPLOAD ---
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file || !file.type.startsWith('image/')) {
+                showAlert('Por favor, selecione um arquivo de imagem válido.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                resizeImage(e.target.result, PICTO_SIZE, PICTO_SIZE, (resizedDataUrl) => {
+                    updatePictogram(resizedDataUrl);
+                });
+            };
+            reader.readAsDataURL(file);
+            modalFileInput.value = '';
+        }
+
+        function resizeImage(base64Str, maxWidth, maxHeight, callback) {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                callback(canvas.toDataURL('image/png'));
+            };
+        }
+
+        // --- DOWNLOAD DA PRANCHA ---
+
+        function downloadBoard() {
+            const boardTitle = boardTitleInput.value.trim();
+
+            const downloadContainer = document.createElement('div');
+            downloadContainer.style.position = 'absolute';
+            downloadContainer.style.left = '-9999px';
+            downloadContainer.style.backgroundColor = '#F9FAFB';
+            downloadContainer.style.padding = '24px';
+            downloadContainer.style.width = pictogramGrid.offsetWidth + 48 + 'px';
+
+            // Adiciona o título da prancha, se houver
+            if (boardTitle) {
+                const titleElement = document.createElement('h2');
+                titleElement.textContent = boardTitle;
+                titleElement.style.textAlign = 'center';
+                titleElement.style.fontSize = '28px';
+                titleElement.style.fontWeight = 'bold';
+                titleElement.style.marginBottom = '20px';
+                titleElement.style.color = '#1f2937'; // text-gray-800
+                titleElement.style.fontFamily = "'Inter', sans-serif";
+                downloadContainer.appendChild(titleElement);
+            }
+
+            const gridClone = pictogramGrid.cloneNode(true);
+            // Garante que o clone tenha a mesma visibilidade de texto que o original
+            if (pictogramGrid.classList.contains('hide-text')) {
+                gridClone.querySelectorAll('.pictogram-legend').forEach(legend => legend.classList.add('hidden'));
+            }
+            downloadContainer.appendChild(gridClone);
+
+            const footerText = document.createElement('div');
+            footerText.textContent = 'Pictograma gerado em https://pranchas.xo.je';
+            footerText.style.marginTop = '16px';
+            footerText.style.textAlign = 'center';
+            footerText.style.fontSize = '12px';
+            footerText.style.color = '#6B7280';
+            footerText.style.fontFamily = "'Inter', sans-serif";
+            downloadContainer.appendChild(footerText);
+
+            document.body.appendChild(downloadContainer);
+
+            html2canvas(downloadContainer, { 
+                scale: 2, 
+                useCORS: true 
+            }).then(canvas => {
+                const link = document.createElement('a');
+                
+                // Sanitiza o título para usar como nome do arquivo
+                const sanitizedTitle = boardTitle
+                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+                    .replace(/[^a-z0-9\s-]/gi, '') // Remove caracteres especiais, exceto espaços e hífens
+                    .trim()
+                    .replace(/\s+/g, '-'); // Substitui espaços por hífens
+                    
+                link.download = `${sanitizedTitle || 'prancha-pictogramas'}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(err => {
+                console.error("Erro ao gerar a imagem:", err);
+                showAlert("Ocorreu um erro ao gerar a imagem. Verifique o console para mais detalhes.");
+            }).finally(() => {
+                document.body.removeChild(downloadContainer);
+            });
+        }
+    </script>
+</body>
+</html>
