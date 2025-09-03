@@ -75,4 +75,4 @@ Os pictogramas são buscados automaticamente na **API do ARASAAC**, mas o usuár
 ## 📥 Como Usar
 1. Baixe ou clone o repositório:
    ```bash
-   git clone https://github.com/seuusuario/pictogram-board-generator.git
+   git clone https://github.com/esdcti/pictogram-board-generator.git
