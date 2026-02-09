@@ -1,6 +1,11 @@
 // --- DOWNLOAD/EXPORTAÇÃO ---
 function downloadBoard(format = 'png') {
     const boardTitle = elements.boardTitleInput.value.trim();
+    const wasDarkMode = document.body.classList.contains('dark-mode');
+    
+    if (wasDarkMode) {
+        document.body.classList.remove('dark-mode');
+    }
 
     const downloadContainer = document.createElement('div');
     downloadContainer.style.position = 'absolute';
@@ -29,7 +34,7 @@ function downloadBoard(format = 'png') {
     downloadContainer.appendChild(gridClone);
 
     const footerText = document.createElement('div');
-    footerText.textContent = 'Pictograma gerado em https://pranchas.xo.je';
+    footerText.textContent = 'Pictograma gerado em https://pranchas.netlify.app';
     footerText.style.marginTop = '16px';
     footerText.style.textAlign = 'center';
     footerText.style.fontSize = '12px';
@@ -41,7 +46,8 @@ function downloadBoard(format = 'png') {
 
     html2canvas(downloadContainer, { 
         scale: 2, 
-        useCORS: true 
+        useCORS: true,
+        backgroundColor: '#F9FAFB'
     }).then(canvas => {
         const sanitizedTitle = sanitizeFilename(boardTitle);
         
@@ -67,6 +73,9 @@ function downloadBoard(format = 'png') {
         showToast("Erro ao gerar arquivo", 'error');
     }).finally(() => {
         document.body.removeChild(downloadContainer);
+        if (wasDarkMode) {
+            document.body.classList.add('dark-mode');
+        }
     });
 }
 
@@ -135,7 +144,7 @@ function showTutorial() {
             <h3 class="text-xl font-bold mb-2">${step.title}</h3>
             <p class="text-gray-600 mb-4">${step.text}</p>
             <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-400">${index + 1} de ${steps.length}</span>
+                <span class="text-sm text-gray-400 whitespace-nowrap">${index + 1}/${steps.length}</span>
                 <div class="flex gap-2">
                     ${index > 0 ? '<button class="prev-btn bg-gray-300 px-4 py-2 rounded">Anterior</button>' : ''}
                     ${index < steps.length - 1 
