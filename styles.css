@@ -120,6 +120,23 @@ main {
     max-width: 350px;
 }
 
+.dark-mode .tutorial-step {
+    background: #374151;
+    color: #f9fafb;
+}
+
+.dark-mode .tutorial-step h3 {
+    color: #f9fafb !important;
+}
+
+.dark-mode .tutorial-step p {
+    color: #d1d5db !important;
+}
+
+.dark-mode .tutorial-step .text-gray-400 {
+    color: #9ca3af !important;
+}
+
 .dark-mode {
     background-color: #1f2937 !important;
     color: #f9fafb;
